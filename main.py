@@ -9,125 +9,159 @@ import os
 import random
 import math
 
+from settings import *
 from objects import *
 from common import *
+from input import Input
+from scene import Scene
 from pygame.locals import *
-#from pygame.locals import *
-
-FPS = 60
 
 pygame.init()
 
 fpsClock = pygame.time.Clock()
 
-SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
-ARENA_WIDTH, ARENA_HEIGHT = 10 * SCREEN_WIDTH, 10 * SCREEN_HEIGHT 
-
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
+
 surface = pygame.Surface(screen.get_size())
+surface.fill((0, 0, 0))
 surface = surface.convert()
-surface.fill((0, 0, 255))
 clock = pygame.time.Clock()
 
 pygame.key.set_repeat(1, 1)
 
 space = pymunk.Space()
-space.gravity = 0, 0  # Create a Space which contain the simulation
+space.gravity = 0, 0  # Create a Space to contain the simulation
+print("Space iterations " + str(space.iterations))
 
-def initialize(space):
+def make_walls():
+    walls = []
+
+    half_ws = Wall.side_size / 2
+    rect = pygame.__rect_constructor(0,0,10,10)
+    rect.width = ARENA_WIDTH + Wall.side_size
+    rect.height = ARENA_HEIGHT + Wall.side_size
+    rect.center = 0,0
+    x = rect.left
+    for y in range(rect.top, rect.bottom, Wall.side_size):
+        walls.append(Wall(x,y))
+    y = rect.bottom
+    for x in range(rect.left, rect.right, Wall.side_size):
+        walls.append(Wall(x, y))
+    x = rect.right
+    for y in range(rect.bottom, rect.top, -Wall.side_size):
+        walls.append(Wall(x,y))
+    y = rect.top
+    for x in range(rect.right, rect.left, -Wall.side_size):
+        walls.append(Wall(x,y))
+
+
+    image = load_image("wall3.png")
+    for wall in walls:
+        wall.set_image(image)
+
+    return walls
+
+def initialize():
     ship = Ship()
-    ship.setImage("ship.png")
-    space.add(ship.body, ship.shape)
+    ship.set_image(load_image("ship_gun0.png"))
+    space.add(ship.body, ship.shapes)
+    
     sprites = [ship]
+    
+    walls = make_walls()
+    for wall in walls:
+        space.add(wall.body, wall.shapes)
+    sprites.extend(walls)
+    
+    return ship, pygame.sprite.RenderClear(sprites)
 
-    # sprites.extend(boulders)
-    # sprites.append(moon)
-    return ship, pygame.sprite.RenderPlain(sprites)
-
-# def add_ball(space):
-#     mass = 1
-#     radius = 14
-#     moment = pymunk.moment_for_circle(mass, 0, radius) # 1
-#     body = pymunk.Body(mass, moment) # 2
-#     x = random.randint(120, 380)
-#     body.position = x, 550 # 3
-#     shape = pymunk.Circle(body, radius) # 4
-#     space.add(body, shape)  # 5
-#     return shape, body
+step_time = 1./FPS
 
 if __name__ == '__main__':
+    
+    # Create scene and input
+    scene = Scene()
+    ii = Input()
 
-    ship, allsprites = initialize(space)
+    # Create crosshair
+    crosshair = Sprite()
+    crosshair.set_image(load_image("crosshair.png"))
+    crosshair.scale = 2
 
+    # Initialize everything and add to scene
+    ship, allobjects = initialize()
+    allobjects.add(crosshair)
+    scene.objects.extend(allobjects)
+    scene._objects_in_screen.add(scene.objects)
+    
+    screen.blit(surface, (0, 0))
+    
+    delta_time = step_time
+    camera_v = 5.;
 
-
+    camera = scene.camera_current
+    
     while True:
         
-        pygame.event.pump()
-        keys = pygame.key.get_pressed()
-
-        for event in pygame.event.get():
-            if event.type == QUIT:
-                pygame.quit()
-                sys.exit()
+        # Update physics
+        space.step(step_time)
         
-        if keys[K_r]:
-            ship, allsprites = initialize(space)
-        if keys[K_LEFT]:
-            ship.body.velocity -= (5, 0)
-        elif keys[K_RIGHT]:
-            ship.body.velocity += (5, 0)
-        if keys[K_UP]:
-            ship.body.velocity += (0, 5)
-        elif keys[K_DOWN]:
-            ship.body.velocity -= (0, 5)
+        ii.update()
+        scene.update()
+        mouse_pos = ii.mouse_pos
 
-        # surface.fill((255, 255, 255))
-
+        if ii.key_pressed(K_f):
+            pygame.display.toggle_fullscreen()
+        if ii.key_pressed(K_ESCAPE):
+            pygame.quit()
+            sys.exit()
+        
+        
         font = pygame.font.Font(None, 14)
 
-        text = font.render(ship.stats(), 1, (255, 255, 255))
+        text = font.render("DeltaTime: {}, MousePos: {}".format(delta_time, mouse_pos) + ship.stats(), 1, (255, 255, 255))
         textpos = text.get_rect()
         textpos.centerx = SCREEN_WIDTH / 2
-
-        ship.update_image()
-
-        # Draw surface
-        screen.blit(surface, (0, 0))
-        # Draw sprites
-        allsprites.update()
-        allsprites.draw(screen)
-        # Draw text
+        
+        # Do the drawing
+        screen.blit(surface, textpos, textpos)
+        scene.render(screen, surface)
         screen.blit(text, textpos)
 
-        draw_options = pymunk.pygame_util.DrawOptions(screen)
-        space.debug_draw(draw_options)
+        
 
-        # def render_center_text(surface, screen, txt, color):
-        #     font2 = pygame.font.Font(None, 36)
-        #     text = font2.render(txt, 1, color)
-        #     textpos = text.get_rect()
-        #     textpos.centerx = SCREEN_WIDTH / 2
-        #     textpos.centery = SCREEN_HEIGHT / 2
-        #     surface.blit(text, textpos)
-        #     screen.blit(surface, (0,0))
+        pygame.draw.line(screen, (0, 255, 255),
+                         ship.rect.center, 
+                         ship.rect.center + camera.world_to_screen_vector(ship.body.velocity) / 4, 
+                         2)
+        
+        
+        
+        # move = pymunk.Vec2d()
+        # if keys[K_LEFT]:
+        #     move += (-camera_v, 0)
+        # elif keys[K_RIGHT]:
+        #     move += (camera_v, 0)
+        # if keys[K_UP]:
+        #     move += (0, camera_v)
+        # elif keys[K_DOWN]:
+        #     move += (0, -camera_v)
+        # camera.position += move
 
-        # if lander.landed:
-        #     if not lander.intact:
-        #         lander.explode(screen)
-        #         #render_center_text(surface, screen, "Kaboom! Your craft is destroyed.", (255,0,0))
-        #     else:
-        #         render_center_text(surface, screen, "You landed successfully!", (0, 255, 0))
-        #
-        #     pygame.display.flip()
-        #     pygame.display.update()
-        #     time.sleep(1)
-        #     ship, allsprites = initialize()
-        # else:
+        mouse_vec = camera.screen_to_world_point(mouse_pos) - ship.position
+        mouse_vec = camera.world_to_screen_vector(mouse_vec)
+
+        crosshair.position = camera.screen_to_world_point(mouse_pos)
+        # camera.position = ship.position
+
+        ship.angle = -mouse_vec.angle_degrees - 90
+        pygame.draw.line(screen, (0, 255, 0), ship.rect.center, ship.rect.center + mouse_vec.normalized() * 10, 2)
+
+        if DEBUG:
+            draw_options = pymunk.pygame_util.DrawOptions(screen)
+            space.debug_draw(draw_options)
 
         pygame.display.flip()
         pygame.display.update()
-
-        # Update physics
-        space.step(0.015)
-        fpsClock.tick(FPS)  # and tick the clock.
+        
+        delta_time = float(fpsClock.tick(FPS)) / 1000.0  # and tick the clock.
