@@ -10,15 +10,19 @@ class Input(object):
         self.mouse_delta = 0,
         self.mouse_moved = False
         
-        self._keys_begin = []
-        self._keys_last = []
+        self._events = []
+        
+        
+        
+        # self._keys_begin = []
+        # self._keys_last = []
         self._keys = []
-        self._keys_end = []
-
-        self._mouse_keys_begin = []
-        self._mouse_keys_last = []
+        # self._keys_end = []
+        # 
+        # self._mouse_keys_begin = []
+        # self._mouse_keys_last = []
         self._mouse_keys = []
-        self._mouse_keys_end = []
+        # self._mouse_keys_end = []
     
     # @property
     # def mouse_pos(self):
@@ -30,53 +34,44 @@ class Input(object):
     def update(self):
         pygame.event.pump()
         
-        for event in pygame.event.get():
+        self._events = pygame.event.get()
+        for event in self._events:
             if event.type == QUIT:
                 pygame.quit()
                 sys.exit()
         
-        # Update Mouse
-        self.mouse_delta = pygame.mouse.get_rel()
         self.mouse_pos = pygame.mouse.get_pos()
-
+        self.mouse_delta = pygame.mouse.get_rel()
         self._keys = pygame.key.get_pressed()
         self._mouse_keys = pygame.mouse.get_pressed()
-        # # Update the keys
-        # del self._keys_begin[:]
-        # del self._keys_end[:]
-        # self._keys = pygame.key.get_pressed()
-        # for key in self._keys:
-        #     if key not in self._keys_last:
-        #         self._keys_begin.append(key)
-        # for key in self._keys_last:
-        #     if key not in self._keys:
-        #         self._keys_end.append(key)
-        # del self._keys_last[:]
-        # self._keys_last.extend(self._keys)
-        # 
-        # # Update the mouse keys
-        # del self._mouse_keys_begin[:]
-        # del self._mouse_keys_end[:]
-        # self._mouse_keys = pygame.mouse.get_pressed()
-        # for key in self._mouse_keys:
-        #     if key not in self._mouse_keys_last:
-        #         self._mouse_keys_begin.append(key)
-        # for key in self._mouse_keys_last:
-        #     if key not in self._mouse_keys:
-        #         self._mouse_keys_end.append(key)
-        # del self._mouse_keys_last[:]
-        # self._mouse_keys_last.extend(self._mouse_keys)
         
-    # def key_began(self, key):
-    #     return key in self._keys_begin
+    def get_events(self, event_type):
+        event_list = []
+        for event in self._events:
+            if event.type == event_type:
+                event_list.append(event)
+        return event_list
+    def key_began(self, key):
+        evl = self.get_events(KEYDOWN)
+        for event in evl:
+            if event.key == key:
+                return True
+        return False
     def key_pressed(self, key):
         return self._keys[key]
     # def key_ended(self, key):
     #     return key in self._keys_end
-    # def mouse_began(self, key):
-    #     return key in self._mouse_keys_begin
+    def mouse_began(self, button):
+        evl = self.get_events(MOUSEBUTTONDOWN)
+        # print evl
+        # if (evl > 0):
+        #     return True
+        for event in evl:
+            if event.button == button:
+                return True
+        return False
     def mouse_pressed(self, key):
-        return key in self._mouse_keys
+        return self._mouse_keys[key]
     # def mouse_ended(self, key):
     #     return key in self._mouse_keys_end
         

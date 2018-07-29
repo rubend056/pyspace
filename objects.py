@@ -44,9 +44,17 @@ class Wall(GameObject):
         )
         self.body.moment = pymunk.moment_for_box(5, (self.side_size, self.side_size))
         self.shapes.append(pymunk.shapes.Poly(self.body, verts))
-        
-        
+
+class Bullet(GameObject):
+    radius = 15
+    def __init__(self):
+        GameObject.__init__(self)
+        self.scale = 0.5
+        self.body.moment = pymunk.moment_for_circle(0.5, 0, self.radius * self.scale)
+        self.shapes.append(pymunk.shapes.Circle(self.body, self.radius * self.scale))
+
 class Ship(GameObject):
+    bullet_image = None
     def __init__(self):
         GameObject.__init__(self)
 
@@ -76,9 +84,11 @@ class Ship(GameObject):
         self.engine_power = 2       # Engine Power
         self.fuel = 100             # Units of fuel
         self.boosting = 0           # Are we in "boost" mode? (show the flame graphic)
-    
+        if Ship.bullet_image == None:
+            Ship.bullet_image = load_image("bullet.png")
     def update(self):
         super(Ship, self).update()
+        self.bullet_impulse = 400
         input = Input.current
         velocity = 300.;
         
@@ -91,9 +101,23 @@ class Ship(GameObject):
             move += (0, velocity)
         elif input.key_pressed(K_s):
             move += (0, -velocity)
-
         move.rotate(-self.body.angle)
         self.body.apply_force_at_local_point(move, (0, 0))
+        
+        if input.mouse_began(1):
+            # Create bullet
+            bullet = Bullet()
+            Scene.current.objects.append(bullet)
+            self.body.space.add(bullet.body, bullet.shapes)
+            bullet.angle = self.angle
+            pos = pymunk.Vec2d(0, 50.)
+            pos.rotate(self.body.angle)
+            bullet.position = self.position + pos
+            bullet.set_image(self.bullet_image)
+            bullet.body.velocity = self.body.velocity
+            bullet.body.apply_impulse_at_local_point((0, self.bullet_impulse))
+            
+            
         
     def stats(self):
         return "Position: [%.2d,%.2d] Velocity: %.2f m/s at %.3d degrees Orientation: %.3d degrees  Fuel: %d" % (self.position.x, self.position.y, self.body.velocity.length, self.body.velocity.angle_degrees, math.degrees(self.body.angle), self.fuel)

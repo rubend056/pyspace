@@ -98,15 +98,15 @@ class Rigidbody(Transform):
         super(Rigidbody, self).__init__()
         self.body = pymunk.Body(1, pymunk.moment_for_box(1 ,(2, 2)))
         self.shapes = []
-        self.linear_drag = 0.01
-        self.angular_drag = 0.01
+        self.linear_drag = 0.
+        self.angular_drag = 0.
 
     def update(self):
-        # if self.body.body_type == pymunk.Body.DYNAMIC:
-        self.body.velocity *= 1.0 - self.linear_drag
-        self.body.angular_velocity *= 1.0 - self.angular_drag
-        super(Rigidbody, self).set_position(self.body.position)
-        super(Rigidbody, self).set_angle(math.degrees(self.body.angle))
+        if self.body.body_type == pymunk.Body.DYNAMIC:
+            self.body.velocity *= 1.0 - self.linear_drag
+            self.body.angular_velocity *= 1.0 - self.angular_drag
+            self.position = self.body.position
+            self.angle = math.degrees(self.body.angle)
 
     # @position.setter
     # def position(self, value):
