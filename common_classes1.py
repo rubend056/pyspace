@@ -3,7 +3,6 @@ import pymunk
 import math
 
 from common_classes0 import *
-from scene import Scene
 from common import *
 
 class Sprite(pygame.sprite.Sprite, Transform):
@@ -17,6 +16,7 @@ class Sprite(pygame.sprite.Sprite, Transform):
         self._image_scale = 1.
         self._image_rotation = 0.
         self._image_trans_dirty = True
+        self.ui = False
         self.rect_world = pygame.Rect(0, 0, 10, 10)  # Used in world
         self.rect = pygame.Rect(0, 0, 10, 10)  # Used for rendering
     def _set_image_scale(self, scale):
@@ -27,19 +27,10 @@ class Sprite(pygame.sprite.Sprite, Transform):
         if self._image_rotation != rot:
             self._image_trans_dirty = True
         self._image_rotation = rot;
-    def update_screen(self):
-        camera = Scene.current.camera_current
+    def update_screen(self, camera):
         # Set scale and rotation
         self._set_image_scale (self.scale / camera.scale)
-        # scale = self.scale / camera.scale
-        # if self._image_scale != scale:
-        #     self._image_trans_dirty = True
-        # self._image_scale = scale;
         self._set_image_rotation (self.angle - camera.angle)
-        # rot = self.angle - camera.angle
-        # if self._image_rotation != rot:
-        #     self._image_trans_dirty = True
-        # self._image_rotation = rot;
 
         # Iterate over the animation
         if self.anim_frames > 0 and len(self.images) > 0:
@@ -60,7 +51,9 @@ class Sprite(pygame.sprite.Sprite, Transform):
             self._image_trans_dirty = False
             self.rect_world.size = self.image.get_rect().size
             self.rect.size = self.image.get_rect().size
-
+        
+        if self.ui:
+            return
         # Apply position in screen based on camera
         self.rect.center = camera.world_to_screen_point(self.position)
         
@@ -71,7 +64,7 @@ class Sprite(pygame.sprite.Sprite, Transform):
     def set_image(self, image):
         self._image = image;
         self.rect = image.get_rect()
-        self.image = self._image.copy()
+        self.image = self._image
         self._image_width, self._image_height = self.rect.width, self.rect.height
 
 class GameObject(Sprite, Rigidbody):
@@ -84,10 +77,9 @@ class GameObject(Sprite, Rigidbody):
         Sprite.set_position(self, value)
         Rigidbody.set_position(self, value)
     
-    # def set_angle(self, value):
-    #     Sprite.set_angle(self, value)
-    #     Rigidbody.set_angle(self, value)
+    def set_angle(self, value):
+        Sprite.set_angle(self, value)
+        Rigidbody.set_angle(self, value)
         
     def update(self):
         Rigidbody.update(self)
-        

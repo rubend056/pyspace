@@ -3,6 +3,7 @@ import pymunk
 import math
 
 from common import *
+import settings
 
 class Transform(object):
     def __init__(self):
@@ -37,18 +38,6 @@ class Transform(object):
         self._angle_degrees = wrap(float(value), -180, 180)
     def set_scale(self, value):
         self._scale = clamp(float(value), 0.01, 100)
-
-# class RectTransform(Transform):
-#     def __init__(self):
-#         Transform.__init__(self)
-#         self.anchor = pymunk.Vec2d(0.5,0.5)
-#     
-#     @property
-#     def anchored_pos(self):
-#         return self.position
-#     @property
-#     def position(self):
-#         return self.position
 
 
 class Camera(Transform):
@@ -94,31 +83,20 @@ class Camera(Transform):
         return out_vect
 
 class Rigidbody(Transform):
+    step_time = 1./settings.FPS
     def __init__(self):
         super(Rigidbody, self).__init__()
         self.body = pymunk.Body(1, pymunk.moment_for_box(1 ,(2, 2)))
         self.shapes = []
-        self.linear_drag = 0.
-        self.angular_drag = 0.
+        self.linear_drag = 0.1
+        self.angular_drag = 0.1
 
     def update(self):
         if self.body.body_type == pymunk.Body.DYNAMIC:
-            self.body.velocity *= 1.0 - self.linear_drag
-            self.body.angular_velocity *= 1.0 - self.angular_drag
+            self.body.velocity *= 1.0 - self.linear_drag * self.step_time
+            self.body.angular_velocity *= 1.0 - self.angular_drag * self.step_time
             self.position = self.body.position
             self.angle = math.degrees(self.body.angle)
-
-    # @position.setter
-    # def position(self, value):
-    #     # Transform.position(self, value)
-    #     super(Rigidbody, self).position = value
-    #     self.body.position = value
-    # 
-    # @angle.setter
-    # def angle(self, value):
-    #     super(Rigidbody, self).angle = value
-    #     self.body.angle = math.radians(value)
-    #     self.body.angle = wrap(self.body.angle, -math.pi, math.pi)
 
     def set_position(self, value):
         super(Rigidbody, self).set_position(value)
@@ -127,3 +105,14 @@ class Rigidbody(Transform):
     def set_angle(self, value):
         super(Rigidbody, self).set_angle(value)
         self.body.angle = math.radians(self.angle)
+        
+class Killable():
+    def __init__(self):
+        self.time_alive = 0.
+        self.kill_time = 0.
+    def update_killable(self, delta_time):
+        if self.kill_time > 0:
+            self.time_alive += delta_time
+            if self.time_alive > self.kill_time:
+                return True
+        return False

@@ -45,6 +45,12 @@ class Input(object):
         self._keys = pygame.key.get_pressed()
         self._mouse_keys = pygame.mouse.get_pressed()
         
+        if self.key_pressed(K_f):
+            pygame.display.toggle_fullscreen()
+        if self.key_pressed(K_ESCAPE):
+            pygame.quit()
+            sys.exit()
+        
     def get_events(self, event_type):
         event_list = []
         for event in self._events:

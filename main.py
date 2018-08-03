@@ -5,22 +5,19 @@ import pymunk.pygame_util
 import sys
 import time
 import pymunk
-import os
-import random
-import math
 
-from settings import *
+import settings as st
+
 from objects import *
 from common import *
 from input import Input
 from scene import Scene
-from pygame.locals import *
 
 pygame.init()
 
 fpsClock = pygame.time.Clock()
 
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
+screen = pygame.display.set_mode((st.SCREEN_WIDTH, st.SCREEN_HEIGHT), 0, 32)
 
 surface = pygame.Surface(screen.get_size())
 surface.fill((0, 0, 0))
@@ -31,16 +28,16 @@ pygame.key.set_repeat(1, 1)
 
 space = pymunk.Space()
 space.gravity = 0, 0  # Create a Space to contain the simulation
-space.iterations += 50
+space.iterations = 20
 print("Space iterations " + str(space.iterations))
 
 def make_walls():
     walls = []
 
     half_ws = Wall.side_size / 2
-    rect = pygame.__rect_constructor(0,0,10,10)
-    rect.width = ARENA_WIDTH + Wall.side_size
-    rect.height = ARENA_HEIGHT + Wall.side_size
+    rect = pygame.Rect(0,0,10,10)
+    rect.width = st.ARENA_WIDTH + Wall.side_size
+    rect.height = st.ARENA_HEIGHT + Wall.side_size
     rect.center = 0,0
     x = rect.left
     for y in range(rect.top, rect.bottom, Wall.side_size):
@@ -70,7 +67,6 @@ def make_walls():
 
 def initialize():
     ship = Ship()
-    ship.set_image(load_image("ship_gun0.png"))
     space.add(ship.body, ship.shapes)
     
     sprites = [ship]
@@ -80,11 +76,8 @@ def initialize():
         space.add(wall.body, wall.shapes)
     sprites.extend(walls)
     
-    return ship, pygame.sprite.RenderClear(sprites)
+    return ship, sprites
 
-step_time = 1./FPS
-
-t = 0.
 def start():
     return time.clock()
 def end(var):
@@ -94,98 +87,67 @@ if __name__ == '__main__':
     
     # Create scene and input
     scene = Scene()
+    st.CURRENT_SCENE = scene
     ii = Input()
+    st.CURRENT_INPUT = ii
 
     # Create crosshair
     crosshair = Sprite()
     crosshair.set_image(load_image("crosshair.png"))
-    crosshair.scale = 2
 
+    text_sprite = Sprite()
+    text_sprite.ui = True
+    text1_sprite = Sprite()
+    text1_sprite.ui = True
     # Initialize everything and add to scene
     ship, allobjects = initialize()
-    allobjects.add(crosshair)
-    scene.objects.extend(allobjects)
-    scene._objects_in_screen.add(scene.objects)
+    scene.objects.add(allobjects)
+    scene.ui_objects.add([crosshair, text_sprite, text1_sprite])
     
     screen.blit(surface, (0, 0))
-    
-    delta_time = step_time
-    camera_v = 5.;
 
     camera = scene.camera_current
+
+    font = pygame.font.Font(None, 14)
     
-    
+    u_time, r_time = 0.,0.
     while True:
         
         # Update physics
-        space.step(step_time)
-
-        t = start()
+        space.step(st.STEP_TIME)
+        
+        # Update scene
         ii.update()
+        t = start()
         scene.update()
-        t = end(t)
-        mouse_pos = ii.mouse_pos
-
-        if ii.key_pressed(K_f):
-            pygame.display.toggle_fullscreen()
-        if ii.key_pressed(K_ESCAPE):
-            pygame.quit()
-            sys.exit()
+        u_time = end(t)
         
-        
-        font = pygame.font.Font(None, 14)
-
-        text = font.render("DeltaTime: {}, Drawing: {}".format(delta_time, len(scene._objects_in_screen)) + ship.stats(), 1, (255, 255, 255))
-        textpos = text.get_rect()
-        textpos.centerx = SCREEN_WIDTH / 2
-        
-
-        
-
-        # pygame.draw.line(screen, (0, 255, 255),
-        #                  ship.rect.center, 
-        #                  ship.rect.center + camera.world_to_screen_vector(ship.body.velocity) / 4, 
-        #                  2)
-
-        mouse_vec = camera.screen_to_world_point(mouse_pos) - ship.position
-        mouse_vec = camera.world_to_screen_vector(mouse_vec)
-        
-        crosshair.position = camera.screen_to_world_point(mouse_pos)
+        # Set crosshair and camera position
+        crosshair.rect.center = ii.mouse_pos
         camera.position = ship.position
 
-        ship.angle = -mouse_vec.angle_degrees - 90
-        pygame.draw.line(screen, (0, 255, 0), ship.rect.center, ship.rect.center + mouse_vec.normalized() * 10, 2)
-        
-        # Do all time testing here
-        # t = time.clock()
-        
-        start()
-        # screen.blit(surface, (0, 0))
-        # Do the drawing
-        
-        
-        
-        
-        text1 = font.render("Time: {}".format(t), 1, (255, 255, 255))
-        text1pos = text1.get_rect()
-        text1pos.y = textpos.height
-        text1pos.centerx = SCREEN_WIDTH / 2
+        # Set the debug texts
+        text_sprite.set_image(font.render("DeltaTime: {}, Drawing: {} ".format(int(st.DELTA_TIME * 1000), len(
+            scene._objects_in_screen)) + ship.stats(), 1, (255, 255, 255)))
+        text_sprite.rect.centerx = st.SCREEN_WIDTH / 2
 
-        screen.blit(surface, textpos, textpos)
-        screen.blit(surface, text1pos, text1pos)
-        scene.render(screen, surface)
+        text1_sprite.set_image(
+            font.render("UpdateTime: {}, RenderTime: {}".format(int(u_time), int(r_time)), 1, (255, 255, 255)))
+        text1_sprite.rect.centerx = st.SCREEN_WIDTH / 2
+        text1_sprite.rect.top = text_sprite.rect.height
+
+        # Draw to the screen
+        t = start()
+        scene.render(surface=screen, background=surface)
+        r_time = end(t)
         
-        if DEBUG:
+        # Draw physics debug
+        if st.DEBUG:
             draw_options = pymunk.pygame_util.DrawOptions(screen)
             space.debug_draw(draw_options)
         
-        screen.blit(text, textpos)
-        screen.blit(text1, text1pos)
-        
-        
-        
         pygame.display.flip()
         pygame.display.update()
+
+        st.DELTA_TIME = float(fpsClock.tick(st.FPS))/1000  # and tick the clock.
         
-        delta_time = float(fpsClock.tick(FPS)) / 1000.0  # and tick the clock.
-        # delta_time = scene.delta_time
