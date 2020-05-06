@@ -79,9 +79,9 @@ def initialize():
     return ship, sprites
 
 def start():
-    return time.clock()
+    return time.time()
 def end(var):
-    return (time.clock() - var) * 1000
+    return (time.time() - var) * 1000
 
 if __name__ == '__main__':
     
